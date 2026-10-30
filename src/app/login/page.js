@@ -228,12 +228,7 @@ export default function LoginPage() {
           </button>
         </form>
 
-        {/* Demo Credentials Helper */}
-        <div className="bg-white/[0.01] border border-white/5 p-4 rounded-2xl text-[0.7rem] text-slate-500 space-y-1">
-          <p className="font-bold text-slate-400 uppercase tracking-wider text-[0.6rem] mb-1">🔑 Informations de Démo :</p>
-          <p>• <b>Admin</b> : identifiant <code className="text-purple-400">admin</code> et mot de passe <code className="text-purple-400">admin</code></p>
-          <p>• <b>Client</b> : sélectionnez l'enseigne et utilisez le mot de passe <code className="text-purple-400">client123</code></p>
-        </div>
+
         {/* Register + footer links */}
         <div className="pt-2 border-t border-white/5 text-center space-y-2">
           <p className="text-xs text-slate-500">

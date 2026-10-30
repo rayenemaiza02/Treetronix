@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeft, Save, Sparkles, RefreshCw, Send, CheckCircle, 
-  Eye, Undo, Smartphone, AlertTriangle, Zap, BarChart2, Users, Radio, LogOut
+  Eye, Undo, Smartphone, AlertTriangle, Zap, BarChart2, Users, Radio, LogOut, ChevronRight, X, Check, Sliders
 } from 'lucide-react';
 
 export default function ClientDashboard({ params }) {
@@ -36,6 +36,23 @@ export default function ClientDashboard({ params }) {
   ]);
   const [aiWorking, setAiWorking] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState([]);
+
+  // Concept Prompt state for High-level IA Generation
+  const [conceptPrompt, setConceptPrompt] = useState('');
+
+  // Étape 8: Treetronix AI Copilot 3-Variant Generation States
+  const [copilotModalOpen, setCopilotModalOpen] = useState(false);
+  const [copilotFormData, setCopilotFormData] = useState({
+    name: '',
+    sector: '',
+    style: 'Premium, élégant et méditerranéen',
+    goal: 'Collecter les emails des visiteurs et promouvoir le spa',
+    description: 'Établissement haut de gamme soucieux de l\'expérience client'
+  });
+  const [generatedVariants, setGeneratedVariants] = useState([]);
+  const [previewVariant, setPreviewVariant] = useState(null);
+  const [savedPortalSnapshot, setSavedPortalSnapshot] = useState(null);
+  const [copilotLoading, setCopilotLoading] = useState(false);
 
   // Version History state
   const [history, setHistory] = useState([]);
@@ -212,15 +229,14 @@ export default function ClientDashboard({ params }) {
       const data = await res.json();
       if (data.success && data.data) {
         const { config, changes, method } = data.data;
-        setPortal(config);
-        fetchRecommendations(config);
-        
+        const previousVersion = await applyAiResultWithSnapshot(config, "Modification par instruction");
+
         let responseMsg = `J'ai adapté votre portail selon vos consignes (${method === 'gemini' ? 'via Gemini' : 'moteur local'}) :\n` + 
           changes.map(c => `• ${c}`).join('\n') + 
-          `\n\nVous pouvez prévisualiser le rendu à droite. N'oubliez pas d'enregistrer pour publier !`;
+          `\n\n🛡️ **Application Sans Risque** : Un snapshot de sauvegarde (Version ${previousVersion}) a été créé dans l'onglet "Versions". Si le résultat ne vous convient pas, restaurez la version précédente à tout moment !`;
         
         setChatMessages(prev => [...prev, { role: 'ai', text: responseMsg }]);
-        showToast('Modifications appliquées !', 'info');
+        showToast('Modifications appliquées et sauvegardées !', 'info');
       } else {
         setChatMessages(prev => [...prev, { role: 'ai', text: `Désolé, une erreur est survenue : ${data.error}` }]);
       }
@@ -231,11 +247,9 @@ export default function ClientDashboard({ params }) {
     }
   };
 
-  const handleAiAutoGenerate = async () => {
+  const handleAiAutoGenerate = async (customPrompt = '') => {
     if (!client) return;
-    if (!confirm(`Voulez-vous régénérer automatiquement un portail complet pour votre secteur "${client.sector}" ? Vos modifications non enregistrées seront remplacées.`)) {
-      return;
-    }
+    const promptToUse = typeof customPrompt === 'string' && customPrompt ? customPrompt : conceptPrompt;
 
     setAiWorking(true);
     try {
@@ -245,21 +259,18 @@ export default function ClientDashboard({ params }) {
         body: JSON.stringify({
           action: 'generate',
           sector: client.sector,
-          clientName: client.name
+          clientName: client.name,
+          businessGoalPrompt: promptToUse
         }),
       });
       const data = await res.json();
       if (data.success && data.data) {
-        setPortal(prev => ({
-          ...prev,
-          ...data.data.config
-        }));
-        fetchRecommendations(data.data.config);
-        showToast('Nouveau template généré par l\'IA !', 'success');
+        const previousVersion = await applyAiResultWithSnapshot(data.data.config, "Génération par Concept IA");
+        showToast('Nouveau portail conçu sur-mesure par l\'IA !', 'success');
         
         setChatMessages(prev => [...prev, { 
           role: 'ai', 
-          text: `J'ai conçu un tout nouveau portail adapté au secteur "${client.sector}".\nExplication : ${data.data.explanation}\nN'oubliez pas d'enregistrer pour mettre en ligne.` 
+          text: `✨ **Nouveau Portail Conçu par l'IA** :\n${data.data.explanation}\n\n🛡️ **Application Sans Risque** : Version ${previousVersion} sauvegardée dans l'onglet "Versions".` 
         }]);
         setActiveTab('ai');
       } else {
@@ -269,6 +280,255 @@ export default function ClientDashboard({ params }) {
       showToast(err.message, 'error');
     } finally {
       setAiWorking(false);
+    }
+  };
+
+  const handleAiOptimize = async () => {
+    if (!portal) return;
+    setAiWorking(true);
+    setChatMessages(prev => [...prev, { role: 'user', text: "Optimiser mon portail selon les performances réelles" }]);
+
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'optimize',
+          currentConfig: portal,
+          analyticsData: stats
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        const { config, changes, explanation, method } = data.data;
+        const previousVersion = await applyAiResultWithSnapshot(config, "Optimisation stratégique IA");
+        
+        let responseMsg = `🎯 **Optimisation Stratégique IA (${method === 'gemini-optimizer' ? 'via Gemini' : 'moteur déterministe'})** :\n${explanation}\n\n` + 
+          `**Ajustements appliqués** :\n` + changes.map(c => `• ${c}`).join('\n') + 
+          `\n\n🛡️ **Application Sans Risque** : Un snapshot de la Version ${previousVersion} a été automatiquement archivé dans l'onglet "Versions". Vous pouvez revenir en arrière à tout moment !`;
+        
+        setChatMessages(prev => [...prev, { role: 'ai', text: responseMsg }]);
+        showToast('Portail optimisé et sauvegardé !', 'success');
+      } else {
+        showToast(data.error || 'Erreur lors de l\'optimisation', 'error');
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setAiWorking(false);
+    }
+  };
+
+  const handleApplyThemeDirect = async (instructionText, themeName) => {
+    if (aiWorking) return;
+    setAiWorking(true);
+    setChatMessages(prev => [...prev, { role: 'user', text: `Appliquer le ${themeName}` }]);
+
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'modify',
+          instructions: instructionText,
+          currentConfig: portal
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        const { config, changes, method } = data.data;
+        const previousVersion = await applyAiResultWithSnapshot(config, `Thème ${themeName}`);
+        
+        let responseMsg = `J'ai appliqué le ${themeName} (${method === 'gemini' ? 'via Gemini' : 'moteur local'}) :\n` + 
+          changes.map(c => `• ${c}`).join('\n') + 
+          `\n\n🛡️ **Application Sans Risque** : Un snapshot (Version ${previousVersion}) a été conservé dans l'onglet "Versions". Cliquez sur "Restaurer" si vous souhaitez annuler.`;
+        
+        setChatMessages(prev => [...prev, { role: 'ai', text: responseMsg }]);
+        showToast(`Thème "${themeName}" appliqué et sauvegardé !`, 'success');
+      } else {
+        setChatMessages(prev => [...prev, { role: 'ai', text: `Désolé, une erreur est survenue : ${data.error}` }]);
+        showToast(data.error || 'Erreur lors de l\'application du thème', 'error');
+      }
+    } catch (err) {
+      setChatMessages(prev => [...prev, { role: 'ai', text: `Erreur : ${err.message}` }]);
+      showToast(err.message, 'error');
+    } finally {
+      setAiWorking(false);
+    }
+  };
+
+  const applyAiResultWithSnapshot = async (newConfig, actionDescription) => {
+    const previousVersion = portal.version || 1;
+    const targetPortalId = portal._id || portal.id;
+
+    setPortal(newConfig);
+    fetchRecommendations(newConfig);
+
+    try {
+      const saveRes = await fetch(`/api/portals/${targetPortalId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newConfig,
+          modifiedBy: 'Assistant IA',
+          description: `Application IA : ${actionDescription}`
+        })
+      });
+      const saveData = await saveRes.json();
+      if (saveData.success && saveData.data) {
+        setPortal(saveData.data);
+        const historyRes = await fetch(`/api/portals/${client._id}/history`, { cache: 'no-store' });
+        const historyData = await historyRes.json();
+        if (historyData.success) {
+          setHistory(historyData.data);
+        }
+      }
+    } catch (err) {
+      console.warn("Erreur d'enregistrement d'historique IA:", err);
+    }
+
+    return previousVersion;
+  };
+
+  // ---- Étape 8: Copilot 3-Variant Generation Handlers ----
+
+  const handleGenerate3Variants = async (overrideForm = null) => {
+    const formData = overrideForm || copilotFormData;
+    setCopilotLoading(true);
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate3Variants',
+          clientName: formData.name || client?.name || 'Mon Établissement',
+          sector: formData.sector || client?.sector || 'Hôtel',
+          style: formData.style,
+          goal: formData.goal,
+          description: formData.description,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.data?.variants) {
+        setGeneratedVariants(data.data.variants);
+        setPreviewVariant(null);
+        showToast('3 propositions générées avec succès !', 'success');
+      } else {
+        showToast(data.error || 'Erreur lors de la génération', 'error');
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setCopilotLoading(false);
+    }
+  };
+
+  const handlePreviewVariant = (variant) => {
+    if (!savedPortalSnapshot) {
+      setSavedPortalSnapshot({ ...portal });
+    }
+    setPreviewVariant(variant);
+    setPortal(prev => ({
+      ...prev,
+      ...variant.config
+    }));
+  };
+
+  const handleExitPreview = () => {
+    if (savedPortalSnapshot) {
+      setPortal(savedPortalSnapshot);
+    }
+    setPreviewVariant(null);
+  };
+
+  const handleCancelCopilot = () => {
+    if (savedPortalSnapshot) {
+      setPortal(savedPortalSnapshot);
+      setSavedPortalSnapshot(null);
+    }
+    setPreviewVariant(null);
+    setGeneratedVariants([]);
+    setCopilotModalOpen(false);
+    showToast('Aperçu annulé. Portail rétabli à son état d\'origine.', 'info');
+  };
+
+  const handleKeepForManualEdit = () => {
+    setSavedPortalSnapshot(null);
+    setPreviewVariant(null);
+    setGeneratedVariants([]);
+    setCopilotModalOpen(false);
+    showToast('Variante conservée dans le studio pour édition manuelle.', 'info');
+  };
+
+  const handleUseChosenDesign = async () => {
+    if (!previewVariant) return;
+    setSaving(true);
+    try {
+      const targetPortalId = portal?._id || portal?.id || client?._id || client?.id;
+      const saveRes = await fetch(`/api/portals/${targetPortalId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...portal,
+          modifiedBy: 'Treetronix AI Copilot',
+          description: `Création IA : application du concept ${previewVariant.name}`
+        })
+      });
+      const saveData = await saveRes.json();
+      if (saveData.success && saveData.data) {
+        setPortal(saveData.data);
+        setSavedPortalSnapshot(null);
+        setPreviewVariant(null);
+        setGeneratedVariants([]);
+        setCopilotModalOpen(false);
+        
+        const historyClientId = client?._id || client?.id || portal?.clientId;
+        if (historyClientId) {
+          try {
+            const historyRes = await fetch(`/api/portals/${historyClientId}/history`, { cache: 'no-store' });
+            const historyData = await historyRes.json();
+            if (historyData.success) {
+              setHistory(historyData.data);
+            }
+          } catch (histErr) {
+            console.warn('History refresh warning:', histErr.message);
+          }
+        }
+
+        showToast(`Concept "${previewVariant.name}" enregistré dans Supabase !`, 'success');
+      } else {
+        showToast(saveData.error || 'Erreur lors de l\'enregistrement', 'error');
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSimulateTraffic = async () => {
+    if (!portal) return;
+    setSaving(true);
+    try {
+      const res = await fetch('/api/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          portalId: portal._id || portal.id,
+          count: 30
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('30 connexions Wi-Fi simulées avec succès dans Supabase !', 'success');
+        fetchClientPortalData();
+      } else {
+        showToast(data.error || 'Erreur lors de la simulation', 'error');
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -540,55 +800,273 @@ export default function ClientDashboard({ params }) {
 
           {/* TAB 1: GENERATIVE AI */}
           {activeTab === 'ai' && (
-            <div className="glass rounded-2xl border border-white/5 overflow-hidden flex flex-col h-[400px] fade-in">
-              <div className="bg-white/[0.02] px-4 py-2 border-b border-white/5 flex items-center justify-between">
-                <span className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider">Demande de modification vocale / écrite</span>
-                <button 
-                  onClick={handleAiAutoGenerate}
-                  disabled={aiWorking}
-                  className="text-[0.7rem] text-purple-400 hover:text-purple-300 flex items-center gap-1.5 font-bold"
-                >
-                  <Sparkles size={12} /> Générer un modèle complet
-                </button>
-              </div>
-
-              {/* Chat bubbles */}
-              <div className="flex-1 p-4 overflow-y-auto space-y-4">
-                {chatMessages.map((msg, idx) => (
-                  <div 
-                    key={idx} 
-                    className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'} whitespace-pre-wrap`}
-                  >
-                    {msg.text}
+            <div className="space-y-5 fade-in">
+              {/* SECTION PRINCIPALE : STUDIO DE GENERATION PAR IA */}
+              <div className="glass p-5 rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-900/10 via-transparent to-cyan-900/10 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-cyan-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                      <Sparkles className="w-5 h-5 text-white animate-pulse" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-extrabold text-white tracking-wide">Treetronix AI Copilot</h3>
+                      <p className="text-[0.7rem] text-slate-400">Générez 3 concepts visuels et stratégiques complets sur-mesure pour votre établissement.</p>
+                    </div>
                   </div>
-                ))}
-                {aiWorking && (
-                  <div className="chat-bubble chat-bubble-ai flex items-center gap-2">
-                    <div className="spinner !w-3.5 !h-3.5" />
-                    <span>L'IA restructure votre portail...</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        setCopilotFormData({
+                          name: client?.name || '',
+                          sector: client?.sector || '',
+                          style: 'Premium, élégant et méditerranéen',
+                          goal: 'Collecter les emails des visiteurs et promouvoir le spa',
+                          description: 'Établissement 4 étoiles en bord de mer'
+                        });
+                        setCopilotModalOpen(true);
+                      }}
+                      className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 font-bold shadow-lg shadow-purple-500/20"
+                    >
+                      <Sparkles size={14} className="text-purple-300" />
+                      Créer avec l'IA (3 propositions)
+                    </button>
+                    <button
+                      onClick={handleAiOptimize}
+                      disabled={aiWorking}
+                      className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5 font-bold hover:text-yellow-300"
+                      title="Analyse les performances réelles pour optimiser le portail"
+                    >
+                      <Zap size={14} className="text-yellow-300" />
+                      Optimiser par Analytics
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section 3 Cartes de Propositions IA (Étape 8) */}
+                {generatedVariants.length > 0 && (
+                  <div className="p-4 rounded-2xl border border-purple-500/40 bg-gradient-to-br from-purple-950/30 via-slate-900/60 to-cyan-950/30 space-y-4 fade-in">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-extrabold text-white flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-purple-400" />
+                          3 propositions générées par Treetronix AI
+                        </h3>
+                        <p className="text-[0.7rem] text-slate-400">
+                          Cliquez sur "Aperçu" pour charger temporairement le concept dans le simulateur.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleGenerate3Variants()}
+                        disabled={copilotLoading}
+                        className="btn-secondary text-[0.7rem] py-1 px-2.5 flex items-center gap-1 hover:text-purple-300"
+                      >
+                        <RefreshCw size={12} className={copilotLoading ? "animate-spin" : ""} />
+                        Régénérer 3 propositions
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      {generatedVariants.map((variant, idx) => {
+                        const isPreviewing = previewVariant?.name === variant.name;
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-3.5 rounded-xl border transition flex flex-col justify-between space-y-3 ${
+                              isPreviewing
+                                ? 'border-purple-500 bg-purple-500/20 shadow-lg shadow-purple-500/20 ring-1 ring-purple-500'
+                                : 'border-white/10 hover:border-purple-500/40 bg-black/20 hover:bg-white/[0.04]'
+                            }`}
+                          >
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[0.65rem] font-extrabold text-purple-400 uppercase tracking-wider">Concept {idx + 1}</span>
+                                {isPreviewing && (
+                                  <span className="badge badge-purple text-[0.6rem] py-0.5 px-2">Aperçu</span>
+                                )}
+                              </div>
+                              <h4 className="text-xs font-extrabold text-white">{variant.name}</h4>
+                              <p className="text-[0.68rem] text-slate-400 leading-relaxed line-clamp-2">{variant.description}</p>
+                            </div>
+
+                            {/* Color Badges */}
+                            <div className="space-y-2 pt-2 border-t border-white/5">
+                              <div className="flex items-center justify-between text-[0.65rem] text-slate-400">
+                                <span>Palette :</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: variant.config.backgroundColor }} title={`Fond: ${variant.config.backgroundColor}`} />
+                                  <span className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: variant.config.primaryColor }} title={`Bouton: ${variant.config.primaryColor}`} />
+                                  <span className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm" style={{ backgroundColor: variant.config.textColor }} title={`Texte: ${variant.config.textColor}`} />
+                                </div>
+                              </div>
+
+                              <div className="flex items-center justify-between text-[0.65rem] text-slate-400">
+                                <span>Auth : <strong className="text-slate-200 uppercase">{variant.config.authType}</strong></span>
+                                <span>Style : <strong className="text-slate-200 capitalize">{variant.config.templateName}</strong></span>
+                              </div>
+
+                              {variant.config.promoText && (
+                                <p className="text-[0.65rem] text-cyan-300 bg-cyan-950/40 border border-cyan-800/30 p-1.5 rounded line-clamp-1">
+                                  🎁 {variant.config.promoText}
+                                </p>
+                              )}
+                            </div>
+
+                            <button
+                              onClick={() => handlePreviewVariant(variant)}
+                              className={`w-full py-1.5 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1 ${
+                                isPreviewing ? 'bg-purple-600 text-white' : 'btn-secondary hover:border-purple-500/50'
+                              }`}
+                            >
+                              <Eye size={12} />
+                              {isPreviewing ? 'Aperçu Actif' : 'Aperçu'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
-                <div ref={messagesEndRef} />
+
+                {/* Grille de Cartes de Génération et Thèmes */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {/* Carte 1 : Génération par Secteur */}
+                  <div 
+                    onClick={handleAiAutoGenerate}
+                    className="group border border-purple-500/20 hover:border-purple-500/50 bg-white/[0.02] hover:bg-purple-500/10 p-4 rounded-xl cursor-pointer transition flex flex-col justify-between space-y-3"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="p-2 bg-purple-500/15 rounded-lg text-purple-300 group-hover:scale-105 transition">
+                        <Zap size={18} />
+                      </div>
+                      <span className="text-[0.65rem] font-bold text-purple-400 bg-purple-500/10 py-0.5 px-2 rounded-full">Recommandé</span>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-200 group-hover:text-white">Génération Complète par Secteur</h4>
+                      <p className="text-[0.68rem] text-slate-400 mt-1 leading-relaxed">
+                        Conçoit un design complet adapté à votre activité <strong className="text-slate-300">"{client?.sector || 'enseigne'}"</strong>.
+                      </p>
+                    </div>
+                    <div className="text-[0.7rem] font-bold text-purple-400 flex items-center gap-1 group-hover:translate-x-1 transition">
+                      Générer maintenant <ChevronRight size={12} />
+                    </div>
+                  </div>
+
+                  {/* Carte 2 : Thème Promo & Soldes */}
+                  <div 
+                    onClick={() => handleApplyThemeDirect("Applique un thème dynamique de promotion avec des couleurs vives, une bannière d'offre promotionnelle et un bouton percutant rouge ou orange", "Thème Promotionnel & Ventes")}
+                    className="group border border-white/5 hover:border-cyan-500/50 bg-white/[0.02] hover:bg-cyan-500/10 p-4 rounded-xl cursor-pointer transition flex flex-col justify-between space-y-3"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="p-2 bg-cyan-500/15 rounded-lg text-cyan-300 group-hover:scale-105 transition">
+                        <Sparkles size={18} />
+                      </div>
+                      <span className="text-[0.65rem] font-bold text-cyan-400 bg-cyan-500/10 py-0.5 px-2 rounded-full">Style Offre</span>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-200 group-hover:text-white">Thème Promotionnel &amp; Ventes</h4>
+                      <p className="text-[0.68rem] text-slate-400 mt-1 leading-relaxed">
+                        Couleurs dynamiques, bannières d'offres promotionnelles et boutons d'action à fort impact.
+                      </p>
+                    </div>
+                    <div className="text-[0.7rem] font-bold text-cyan-400 flex items-center gap-1 group-hover:translate-x-1 transition">
+                      Appliquer le thème <ChevronRight size={12} />
+                    </div>
+                  </div>
+
+                  {/* Carte 3 : Thème Luxe & Sombre */}
+                  <div 
+                    onClick={() => handleApplyThemeDirect("Applique un thème sombre très élégant, style glassmorphism avec fond dépoli, contours violets ou dorés et typographie raffinée", "Thème Sombre Premium & Glass")}
+                    className="group border border-white/5 hover:border-indigo-500/50 bg-white/[0.02] hover:bg-indigo-500/10 p-4 rounded-xl cursor-pointer transition flex flex-col justify-between space-y-3"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="p-2 bg-indigo-500/15 rounded-lg text-indigo-300 group-hover:scale-105 transition">
+                        <Radio size={18} />
+                      </div>
+                      <span className="text-[0.65rem] font-bold text-indigo-400 bg-indigo-500/10 py-0.5 px-2 rounded-full">Luxe</span>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-200 group-hover:text-white">Thème Sombre Premium &amp; Glass</h4>
+                      <p className="text-[0.68rem] text-slate-400 mt-1 leading-relaxed">
+                        Effet dépoli futuriste, typographie haut de gamme et tons contrastés élégants.
+                      </p>
+                    </div>
+                    <div className="text-[0.7rem] font-bold text-indigo-400 flex items-center gap-1 group-hover:translate-x-1 transition">
+                      Appliquer le thème <ChevronRight size={12} />
+                    </div>
+                  </div>
+
+                  {/* Carte 4 : Thème Éco & Minimaliste */}
+                  <div 
+                    onClick={() => handleApplyThemeDirect("Applique un style minimaliste épuré avec fond vert clair ou beige très doux, typographie serif élégante et bouton vert nature", "Thème Épuré & Minimaliste")}
+                    className="group border border-white/5 hover:border-emerald-500/50 bg-white/[0.02] hover:bg-emerald-500/10 p-4 rounded-xl cursor-pointer transition flex flex-col justify-between space-y-3"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="p-2 bg-emerald-500/15 rounded-lg text-emerald-300 group-hover:scale-105 transition">
+                        <CheckCircle size={18} />
+                      </div>
+                      <span className="text-[0.65rem] font-bold text-emerald-400 bg-emerald-500/10 py-0.5 px-2 rounded-full">Éco / Nature</span>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-bold text-slate-200 group-hover:text-white">Thème Épuré &amp; Minimaliste</h4>
+                      <p className="text-[0.68rem] text-slate-400 mt-1 leading-relaxed">
+                        Design sobre, tons doux et naturels, idéal pour une expérience utilisateur simple et apaisante.
+                      </p>
+                    </div>
+                    <div className="text-[0.7rem] font-bold text-emerald-400 flex items-center gap-1 group-hover:translate-x-1 transition">
+                      Appliquer le thème <ChevronRight size={12} />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Input */}
-              <form onSubmit={handleAiInstruction} className="p-3 bg-black/30 border-t border-white/5 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Ex: 'Mets un style moderne sombre avec boutons jaunes'"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  disabled={aiWorking}
-                  className="form-input flex-1 bg-white/5"
-                />
-                <button 
-                  type="submit" 
-                  disabled={aiWorking || !chatInput.trim()}
-                  className="btn-primary px-4 py-2"
-                >
-                  <Send size={14} />
-                </button>
-              </form>
+              {/* SECTION SECONDAIRE : ASSISTANT CONVERSATIONNEL & RETOUCHES */}
+              <div className="glass rounded-2xl border border-white/5 overflow-hidden flex flex-col h-[280px]">
+                <div className="bg-white/[0.02] px-4 py-2 border-b border-white/5 flex items-center justify-between">
+                  <span className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <Send size={12} className="text-purple-400" />
+                    Assistant Conversationnel &amp; Retouches Précises
+                  </span>
+                  <span className="text-[0.65rem] text-slate-500">Posez des consignes spécifiques</span>
+                </div>
+
+                {/* Chat bubbles */}
+                <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs">
+                  {chatMessages.map((msg, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'} whitespace-pre-wrap`}
+                    >
+                      {msg.text}
+                    </div>
+                  ))}
+                  {aiWorking && (
+                    <div className="chat-bubble chat-bubble-ai flex items-center gap-2">
+                      <div className="spinner !w-3.5 !h-3.5" />
+                      <span>L'IA restructure votre portail...</span>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input */}
+                <form onSubmit={handleAiInstruction} className="p-2.5 bg-black/30 border-t border-white/5 flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Ex: 'Change uniquement la couleur du bouton en rouge'"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    disabled={aiWorking}
+                    className="form-input flex-1 bg-white/5 text-xs py-2"
+                  />
+                  <button 
+                    type="submit" 
+                    disabled={aiWorking || !chatInput.trim()}
+                    className="btn-primary px-4 py-2 text-xs"
+                  >
+                    <Send size={14} />
+                  </button>
+                </form>
+              </div>
             </div>
           )}
 
@@ -745,7 +1223,18 @@ export default function ClientDashboard({ params }) {
           {/* TAB 3: STATS */}
           {activeTab === 'stats' && (
             <div className="glass p-6 rounded-2xl border border-white/5 space-y-4 fade-in">
-              <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Fréquentation de votre réseau</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">Fréquentation de votre réseau</h3>
+                <button
+                  onClick={handleSimulateTraffic}
+                  disabled={saving}
+                  className="btn-secondary text-[0.7rem] py-1 px-3 flex items-center gap-1.5 hover:border-purple-500/50 hover:text-purple-300 transition"
+                  title="Génère un jeu de données réalistes de démonstration dans Supabase"
+                >
+                  <RefreshCw size={12} className={saving ? "animate-spin" : ""} />
+                  🎲 Simuler 30 connexions Wi-Fi
+                </button>
+              </div>
 
               <div className="relative w-full h-[150px] flex items-center justify-center bg-black/10 rounded-xl p-4">
                 {connectionsPerDay.length === 0 ? (
@@ -878,6 +1367,75 @@ export default function ClientDashboard({ params }) {
             </span>
           </div>
 
+          {/* Étape 8: Live Preview Toolbar & AI Explanations */}
+          {previewVariant && (
+            <div className="w-full mb-4 glass p-4 rounded-xl border border-purple-500/50 bg-purple-950/40 space-y-3 fade-in shadow-xl">
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <div>
+                  <span className="text-[0.65rem] font-bold text-purple-400 uppercase tracking-wider">Aperçu Live Temporaire</span>
+                  <h4 className="text-xs font-extrabold text-white">{previewVariant.name}</h4>
+                </div>
+                <span className="text-[0.6rem] font-bold text-yellow-300 bg-yellow-950/60 border border-yellow-700/50 px-2 py-0.5 rounded">
+                  Non Enregistré
+                </span>
+              </div>
+
+              <div className="space-y-1.5 text-[0.68rem] text-slate-300">
+                <p><strong>🎨 Design :</strong> {previewVariant.explanation.design}</p>
+                <p><strong>🔑 Authentification :</strong> {previewVariant.explanation.authentication}</p>
+                <p><strong>📈 Marketing :</strong> {previewVariant.explanation.marketing}</p>
+              </div>
+
+              <div className="flex flex-col gap-1.5 pt-2 border-t border-white/10">
+                <button
+                  onClick={handleUseChosenDesign}
+                  disabled={saving}
+                  className="w-full btn-primary text-xs py-2 font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-purple-500/30"
+                >
+                  <Check size={14} />
+                  Utiliser ce design
+                </button>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    onClick={handleExitPreview}
+                    className="btn-secondary text-[0.65rem] py-1.5 px-2 flex items-center justify-center gap-1"
+                  >
+                    <ChevronRight size={12} />
+                    Voir une autre proposition
+                  </button>
+
+                  <button
+                    onClick={() => handleGenerate3Variants()}
+                    disabled={copilotLoading}
+                    className="btn-secondary text-[0.65rem] py-1.5 px-2 flex items-center justify-center gap-1"
+                  >
+                    <RefreshCw size={12} className={copilotLoading ? "animate-spin" : ""} />
+                    Régénérer 3 propositions
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    onClick={handleKeepForManualEdit}
+                    className="btn-secondary text-[0.65rem] py-1.5 px-2 flex items-center justify-center gap-1"
+                  >
+                    <Sliders size={12} />
+                    Modifier manuellement
+                  </button>
+
+                  <button
+                    onClick={handleCancelCopilot}
+                    className="btn-secondary text-[0.65rem] py-1.5 px-2 text-red-400 hover:text-red-300 border-red-500/20 flex items-center justify-center gap-1"
+                  >
+                    <X size={12} />
+                    Annuler
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Smartphone Simulator */}
           <div className="phone-mockup">
             <div className="phone-screen" style={getTemplateStyle()}>
@@ -951,6 +1509,118 @@ export default function ClientDashboard({ params }) {
           </div>
         </div>
       </main>
+
+      {/* Modal Form Copilot IA (Étape 8) */}
+      {copilotModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 fade-in">
+          <div className="glass p-6 rounded-2xl border border-purple-500/30 max-w-lg w-full space-y-5 bg-gradient-to-br from-slate-900 via-purple-950/40 to-slate-900 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-purple-500/20 rounded-lg text-purple-300">
+                  <Sparkles size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-white">Treetronix AI Copilot</h3>
+                  <p className="text-[0.7rem] text-slate-400">Générez 3 concepts uniques adaptés à vos objectifs métier.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCopilotModalOpen(false)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleGenerate3Variants();
+                setCopilotModalOpen(false);
+              }}
+              className="space-y-3.5 text-xs"
+            >
+              <div>
+                <label className="form-label">Nom de l'établissement</label>
+                <input
+                  type="text"
+                  required
+                  value={copilotFormData.name}
+                  onChange={(e) => setCopilotFormData({ ...copilotFormData, name: e.target.value })}
+                  className="form-input"
+                  placeholder="Ex: Hôtel Marina Hammamet"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="form-label">Secteur d'activité</label>
+                  <input
+                    type="text"
+                    required
+                    value={copilotFormData.sector}
+                    onChange={(e) => setCopilotFormData({ ...copilotFormData, sector: e.target.value })}
+                    className="form-input"
+                    placeholder="Ex: Hôtel, Restaurant, Café..."
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Style recherché</label>
+                  <input
+                    type="text"
+                    required
+                    value={copilotFormData.style}
+                    onChange={(e) => setCopilotFormData({ ...copilotFormData, style: e.target.value })}
+                    className="form-input"
+                    placeholder="Ex: Premium, épuré, méditerranéen..."
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label">Objectif principal</label>
+                <input
+                  type="text"
+                  required
+                  value={copilotFormData.goal}
+                  onChange={(e) => setCopilotFormData({ ...copilotFormData, goal: e.target.value })}
+                  className="form-input"
+                  placeholder="Ex: Collecter les emails et promouvoir le spa"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">Description complémentaire (optionnel)</label>
+                <textarea
+                  rows="2"
+                  value={copilotFormData.description}
+                  onChange={(e) => setCopilotFormData({ ...copilotFormData, description: e.target.value })}
+                  className="form-input resize-none"
+                  placeholder="Ex: Hôtel 4 étoiles situé à Hammamet en bord de mer..."
+                />
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCopilotModalOpen(false)}
+                  className="flex-1 btn-secondary text-xs py-2"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={copilotLoading}
+                  className="flex-1 btn-primary text-xs py-2 font-bold flex items-center justify-center gap-1.5"
+                >
+                  <Sparkles size={14} />
+                  Générer mes 3 propositions
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

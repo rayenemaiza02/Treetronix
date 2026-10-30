@@ -1,108 +1,122 @@
-# Plateforme SaaS de Portails Captifs Wi-Fi avec IA Générative 📡🤖
+# Treetronix SaaS — Plateforme de Portails Captifs Wi-Fi avec IA Générative 📡🤖
 
-Bienvenue dans le dépôt du projet de gestion de portails captifs intelligents. Ce projet a été développé dans le cadre d'un stage d'été. Il permet de configurer, designer et optimiser les portails captifs des clients (cafés, hôtels, boutiques, supermarchés) de manière centralisée, avec une prévisualisation mobile en temps réel et un assistant d'intelligence artificielle intégré.
+> **Treetronix SaaS** est une solution B2B complète et moderne développée avec **Next.js 14 (App Router)** et **Supabase (PostgreSQL Cloud)**. Elle permet aux établissements (hôtels, restaurants, boutiques, supermarchés, cafés) de concevoir, déployer et optimiser intelligemment leurs portails captifs Wi-Fi, avec une prévisualisation mobile temps réel (WYSIWYG) et un assistant d'intelligence artificielle intégré (**Google Gemini 1.5 Flash**).
 
 ---
 
 ## 🛠️ Stack Technique
 
-- **Framework** : React + Next.js 14 (App Router)
-- **Design & CSS** : Tailwind CSS (avec charte premium, animations, flous de verre et thème sombre)
-- **Base de Données** : MongoDB + Mongoose (avec repli local JSON)
-- **Traitement IA** : SDK Google Generative AI (modèle `gemini-1.5-flash`)
-- **Bibliothèque d'Icônes** : Lucide React
+* **Framework Fullstack** : React 18 & Next.js 14 (App Router, Server Actions & Route Handlers)
+* **Design & UI** : Tailwind CSS (Glassmorphism Dark Premium, micro-interactions 60 FPS)
+* **Icônes** : Lucide React
+* **Base de Données Principale** : Supabase PostgreSQL Cloud (avec colonnes JSONB pour l'historique d'états)
+* **Persistance Résiliente (Dual Adapter)** : Fallback automatique et transparent vers une base JSON locale (`data/local_db.json`)
+* **Moteur IA Hybride** : Google Gemini 1.5 Flash (`@google/generative-ai`) + Fallback NLP / Algorithmique local
+* **Moteurs Déterministes Dédiés** :
+  * `analyticsEngine.js` : Calculs statistiques exacts en pur JavaScript (anti-hallucination)
+  * `anomalyEngine.js` : Détection automatique de 5 anomalies réseau et ergonomiques
 
 ---
 
-## ✨ Fonctionnalités Clés
+## ✨ Fonctionnalités Majeures
 
-1. **Dashboard Centralisé** : Suivi des indicateurs clés (KPIs), métriques de connexions simulées par un graphique SVG dynamique et historique des dernières activités.
-2. **Gestion des Clients (CRUD)** : Enregistrement des clients par secteur d'activité (Hôtel, Café, Restaurant, Supermarché, Boutique, etc.).
-3. **Studio Design Interactif** :
-   - Personnalisation visuelle manuelle (templates, palette de couleurs, logos, bannières, conditions RGPD).
-   - Simulateur de smartphone interactif avec rendu instantané des changements.
-   - Recommandations ergonomiques en temps réel (détection de contrastes insuffisants, longueur de texte, conformité RGPD).
-4. **Assistant IA Génératif (Gemini)** :
-   - Modification du design ou du contenu en langage naturel français (ex: *"mets un bouton rouge et un style minimalist"*).
-   - Génération complète de portail adaptée selon le secteur d'activité (ex: *"génère un portail moderne pour une boutique"*).
-5. **Historique des Versions & Restauration** : Sauvegarde automatique de chaque version à chaque publication avec possibilité de restaurer n'importe quelle version en un clic.
-6. **API Ouverte pour Routeurs (GlobalNet)** :
-   - `GET /api/portal/[slug]` : API publique retournant le JSON de configuration active pour le hardware réseau.
-   - `POST /api/portal/[slug]` : API de journalisation des connexions depuis le portail.
-7. **Portail Captif Public Simulée** : URL `/portal/[slug]` accessible par les clients finaux lors d'une redirection, validant la connexion réseau et insérant une statistique dans la plateforme.
+### 1. 📊 Tour de Contrôle Administrateur (`/dashboard`)
+* Suivi des indicateurs clés (KPIs) : Total clients, portails actifs, volume de connexions.
+* **Graphique SVG interactif sur 7 jours** : recalcul dynamique selon la base de données.
+* Répartition en direct des méthodes d'authentification (*Bouton 1-clic, Email, Téléphone, Login, Voucher*).
+* Classement des **portails les plus fréquentés** et journal d'audit des dernières modifications.
+
+### 2. 📱 Studio Client & Simulateur Mobile WYSIWYG (`/client/[slug]`)
+* **Simulateur smartphone live (format 9:41)** : Visualisation instantanée des couleurs, logos, bannières et textes légaux.
+* Personnalisation fine : templates visuels (*Glassmorphism, Modern, Minimalist, Classic*), codes hexadécimaux et textes d'accueil.
+* **Diagnostic d'anomalies en direct** : Alerte de contrastes insuffisants, conformité RGPD et chutes de fréquentation.
+* **Simulateur de trafic réseau** : Bouton *« 🎲 Simuler 30 connexions Wi-Fi »* pour générer des données réalistes de test.
+
+### 3. ✨ Treetronix AI Copilot (3 Propositions Métier)
+* **Génération sur-mesure** à partir d'un brief (*Nom, Secteur, Style recherché, Objectif, Description*).
+* Déclinaison instantanée de **3 concepts visuels et stratégiques distincts** :
+  * *Concept 1 :* Prestige & Sombre (ambiance feutrée, contrastes forts)
+  * *Concept 2 :* Lumineux & Warm (ambiance chaleureuse, accueil convivial)
+  * *Concept 3 :* Épuré & Minimal (ergonomie sobre, accès rapide)
+* **Catalogue d'Images Sectoriel HD** : Résoluteur sémantique couvrant **15 secteurs d'activité** (*Sport/Foot, Mode, Hôtels, Restaurants, Cafés, Pizzerias, Pharmacies, Automobile, Coworking, etc.*) avec visuels Unsplash HD.
+* **Aperçu non-destructif** : Test direct dans le simulateur mobile sans impacter la base de données.
+
+### 4. 🛡️ Application Sans Risque & Versioning Immuable
+* **Snapshots automatiques pré-IA** : Chaque action IA ou manuelle archive l'état précédent dans `portal_histories`.
+* **Incrémentation de version** : Historique traçable (*v1, v2, v3...*) avec auteur et horodatage.
+* **Restauration en 1 clic** : Réversibilité totale conservée en base Supabase après rechargement de page.
+
+### 5. 🔌 API Ouverte pour Matériel Réseau (GlobalNet / RADIUS)
+* `GET /api/portal/[slug]` : API publique fournissant la configuration active au routeur Wi-Fi physique.
+* `POST /api/portal/[slug]` : API de journalisation sécurisée des connexions visiteurs.
 
 ---
 
-## 💾 Mode d'Exécution Hybride (Idéal pour la soutenance/présentation)
+## 🏗️ Architecture du Projet
 
-Pour faciliter le lancement immédiat du projet par votre encadrant sans nécessiter d'installations lourdes, deux fonctionnalités hybrides innovantes ont été intégrées :
-
-### 1. Stockage Hybride (MongoDB ⇆ JSON local)
-L'adaptateur unifié `src/lib/db.js` bascule automatiquement le stockage :
-- **Si `MONGODB_URI` est définie** dans `.env.local` : Connexion directe à MongoDB (Atlas ou local) via Mongoose.
-- **Si `MONGODB_URI` n'est pas définie** : L'application stocke les données dans un fichier local du projet (`data/local_db.json`). Le comportement de l'application reste rigoureusement le même.
-
-### 2. IA Hybride (Gemini API ⇆ Parser NLP Local)
-Le service `src/lib/aiService.js` gère le traitement en langage naturel :
-- **Si `GEMINI_KEY` est configurée** : Les invites sont analysées en temps réel par le LLM Google Gemini (modèle ultra-rapide 1.5 Flash).
-- **Si aucune clé n'est fournie** : Un analyseur de règles local basé sur des correspondances sémantiques en français prend le relais. Il reconnaît instantanément les commandes de couleurs, de templates, de types d'authentification et de thèmes sectoriels.
+```
+projet-treetronix/
+├── src/
+│   ├── app/
+│   │   ├── page.js                     # Racine : redirection intelligente de session
+│   │   ├── login/page.js               # Authentification sécurisée Admin / Client
+│   │   ├── register/page.js            # Enregistrement d'un nouvel établissement
+│   │   ├── dashboard/                  # Espace d'administration central
+│   │   │   ├── page.js                 # KPIs, graphique 7 jours et top portails
+│   │   │   ├── clients/page.js         # Gestion du parc clients (CRUD)
+│   │   │   └── portals/page.js         # Supervision des portails
+│   │   ├── client/[slug]/page.js       # Studio Client, AI Copilot & Simulateur
+│   │   ├── portal/[slug]/page.js       # Portail captif public de connexion
+│   │   └── api/                        # Routeurs et APIs Serverless Next.js
+│   │       ├── ai/route.js             # Routeur central d'actions IA (POST /api/ai)
+│   │       ├── portals/[id]/route.js   # CRUD portails & snapshots de version
+│   │       ├── portals/.../restore/    # Restauration 1-clic immuable
+│   │       └── stats/route.js          # Analytics & simulateur de trafic
+│   └── lib/
+│       ├── aiService.js                # Intégration Gemini 1.5 Flash + Fallback local + Pool 15 métiers
+│       ├── analyticsEngine.js          # Moteur mathématique déterministe JS (0 hallucination)
+│       ├── anomalyEngine.js            # Moteur de détection de 5 anomalies réseau
+│       ├── db.js                       # Sélecteur de persistance résilient
+│       ├── supabaseDb.js               # Adaptateur Supabase PostgreSQL
+│       └── jsonDb.js                   # Moteur de secours local persistant
+```
 
 ---
 
-## 🚀 Installation & Lancement
+## 🚀 Démarrage Rapide
 
-### 1. Cloner le projet ou ouvrir le dossier
-
+### 1. Cloner le projet
 ```bash
-cd projet-treetronix
+git clone https://github.com/rayenemaiza02/Treetronix.git
+cd Treetronix
 ```
 
 ### 2. Installer les dépendances
-
 ```bash
 npm install
 ```
 
-### 3. Configurer l'environnement (Optionnel)
-
-Créez un fichier `.env.local` à la racine du projet pour activer MongoDB et l'IA réelle :
-
+### 3. Variables d'environnement (`.env.local`)
+Créez un fichier `.env.local` à la racine :
 ```env
-# Clé de l'API Google Gemini (Gratuite et très simple à obtenir sur Google AI Studio)
-GEMINI_API_KEY=votre_cle_gemini_api
+# Supabase PostgreSQL Cloud
+NEXT_PUBLIC_SUPABASE_URL=https://votre-projet.supabase.co
+NEXT_PUBLIC_SUPABASE_KEY=votre_cle_anon_ou_service_role
 
-# Base de données MongoDB (Si laissé vide, le projet utilisera le stockage JSON local data/local_db.json)
-MONGODB_URI=mongodb+srv://...
+# Google Gemini AI (Optionnel — Fallback algorithmique local inclus)
+GEMINI_API_KEY=votre_cle_api_gemini
 
-# URL de base de l'application (Pour l'API de redirection)
+# URL de base de l'application
 NEXT_PUBLIC_BASE_URL=http://localhost:3000
 ```
 
-### 4. Lancer le serveur de développement
-
+### 4. Lancer le serveur
 ```bash
 npm run dev
 ```
-
-Ouvrez [http://localhost:3000](http://localhost:3000) dans votre navigateur pour tester la plateforme !
+Accédez à l'application sur [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## 🔌 Schéma d'intégration GlobalNet / Hardware
-
-Lorsqu'un utilisateur se connecte au Wi-Fi physique, le routeur doit :
-1. Interroger l'API publique : `GET http://localhost:3000/api/portal/carrefour`
-2. Récupérer la configuration renvoyée (couleurs, type d'auth, logo, etc.) :
-   ```json
-   {
-     "client": "Carrefour",
-     "slug": "carrefour",
-     "portalId": "...",
-     "logo": "...",
-     "primaryColor": "#005baa",
-     "authType": "email",
-     "portalUrl": "http://localhost:3000/portal/carrefour"
-   }
-   ```
-3. Rediriger l'utilisateur vers la valeur de `portalUrl`.
-4. Une fois connecté sur la page du portail captif, le système enregistrera l'autorisation et loggera la connexion avec `POST http://localhost:3000/api/portal/carrefour`.
+## 📄 Licence & Crédits
+Projet développé dans le cadre des solutions SaaS de portails captifs intelligents **Treetronix** en partenariat avec l'opérateur réseau **GlobalNet**.

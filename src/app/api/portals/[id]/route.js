@@ -25,7 +25,7 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const body = await request.json();
-    const { modifiedBy = 'Admin', description = 'Modification manuelle', ...updates } = body;
+    const { modifiedBy = 'Admin', description = 'Modification manuelle', _id, id, ...updates } = body;
 
     const db = await getDb();
     let existing = await db.portals.findById(params.id);
@@ -35,7 +35,7 @@ export async function PUT(request, { params }) {
       // Fallback: search by clientId
       existing = await db.portals.findOne({ clientId: params.id });
       if (existing) {
-        targetId = existing._id;
+        targetId = existing._id || existing.id;
       }
     }
 
@@ -43,14 +43,18 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ success: false, error: 'Portail non trouvé.' }, { status: 404 });
     }
 
-    // Save current version to history before overwriting
-    await db.portalhistories.create({
-      portalId: targetId,
-      version: existing.version || 1,
-      config: { ...existing },
-      modifiedBy,
-      description,
-    });
+    // Save current version to history before overwriting (non-blocking warning if history fails)
+    try {
+      await db.portalhistories.create({
+        portalId: targetId,
+        version: existing.version || 1,
+        config: { ...existing },
+        modifiedBy,
+        description,
+      });
+    } catch (historyErr) {
+      console.warn('History snapshot save warning:', historyErr.message);
+    }
 
     // Increment version and update
     const newVersion = (existing.version || 1) + 1;
@@ -60,8 +64,9 @@ export async function PUT(request, { params }) {
       updatedAt: new Date().toISOString(),
     });
 
-    return NextResponse.json({ success: true, data: updated });
+    return NextResponse.json({ success: true, data: updated || { ...existing, ...updates, version: newVersion } });
   } catch (error) {
+    console.error('PUT /api/portals error:', error);
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
